@@ -61,3 +61,56 @@ SELECT * FROM infectious_data;
 SELECT 'entities', COUNT(*) FROM entities
 UNION ALL
 SELECT 'infectious_data', COUNT(1) FROM infectious_data;
+
+/*--- Крок 3: Агреґація по Number_rabies ---*/
+SELECT 
+    e.entity_name,
+    e.code,
+    COUNT(*) AS total_rows,
+    AVG(idata.number_rabies) AS avg_rabies,
+    MIN(idata.number_rabies) AS min_rabies,
+    MAX(idata.number_rabies) AS max_rabies,
+    SUM(idata.number_rabies) AS sum_rabies
+FROM infectious_data idata
+JOIN entities e ON idata.entity_id = e.id
+WHERE idata.number_rabies IS NOT NULL
+GROUP BY e.entity_name, e.code
+ORDER BY avg_rabies DESC
+LIMIT 10;
+
+/*--- Крок 4: “різниця в роках” через вбудовані функції ---*/
+SELECT
+    d.id,
+    d.year,
+    STR_TO_DATE(CONCAT(d.year, '-01-01'), '%Y-%m-%d') AS year_start,
+    CURDATE() AS today,
+    TIMESTAMPDIFF(
+        YEAR,
+        STR_TO_DATE(CONCAT(d.year, '-01-01'), '%Y-%m-%d'),
+        CURDATE()
+    ) AS years_diff
+FROM infectious_data d
+LIMIT 20;
+
+/*--- Крок 5: власна функція ---*/
+DELIMITER $$
+CREATE FUNCTION years_since (_year INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+  RETURN TIMESTAMPDIFF(
+           YEAR,
+           STR_TO_DATE(CONCAT(_year, '-01-01'), '%Y-%m-%d'),
+           CURDATE()
+         );
+END$$
+DELIMITER ;
+
+-- Використання:
+SELECT
+    d.id,
+    d.year,
+    years_since(d.year) AS years_diff
+FROM infectious_data d
+LIMIT 20;
+
